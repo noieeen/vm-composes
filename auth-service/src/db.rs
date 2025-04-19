@@ -36,7 +36,7 @@ impl Db {
     pub async fn create_user(&self, email: &str, password: &str) -> Result<User, sqlx::Error> {
         let id = Uuid::new_v4();
         let rec = sqlx::query_as::<_, User>(
-            "INSERT INTO users (id, email, password) VALUES ($1, $2, $3) RETURNING *"
+            "INSERT INTO users (id, email, password) VALUES ($1, $2, $3) RETURNING *",
         )
         .bind(id)
         .bind(email)
@@ -51,6 +51,12 @@ impl Db {
         sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
             .bind(email)
             .fetch_one(&self.0)
+            .await
+    }
+
+    pub async fn get_users(&self) -> Result<Vec<User>, sqlx::Error> {
+        sqlx::query_as::<_, User>("SELECT * FROM users")
+            .fetch_all(&self.0)
             .await
     }
 }

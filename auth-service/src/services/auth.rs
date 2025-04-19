@@ -1,4 +1,7 @@
-use crate::{db::Db, utils::verify_password};
+use crate::{
+    db::Db,
+    utils::{hash_password, verify_password},
+};
 use axum::{Json, extract::State, http::StatusCode};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
@@ -40,12 +43,12 @@ pub struct AuthResponse {
 #[derive(Serialize)]
 pub struct RegisterResponse {
     pub message: String,
-    pub email: String
+    pub email: String,
 }
 
 #[derive(Serialize)]
 pub struct UserResponse {
-    pub email: String
+    pub email: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -83,8 +86,10 @@ pub async fn register(
     State(db): State<Db>,
     Json(payload): Json<RegisterPayload>,
 ) -> Result<Json<RegisterResponse>, StatusCode> {
+    let hashed = hash_password(&payload.password).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
     let user = db
-        .create_user(&payload.email, &payload.password)
+        .create_user(&payload.email, &hashed)
         .await
         .map_err(|_| StatusCode::BAD_REQUEST)?;
 
@@ -94,9 +99,23 @@ pub async fn register(
     }))
 }
 
+pub async fn get_users(State(db): State<Db>) -> Result<Json<Vec<UserResponse>>, StatusCode> {
+    let users = db
+        .get_users()
+        .await
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let user_responses: Vec<UserResponse> = users
+        .into_iter()
+        .map(|user| UserResponse { email: user.email })
+        .collect();
+
+    Ok(Json(user_responses))
+}
+
 // pub async fn get_user_handler(db: Result<Db, sqlx::Error>) -> Result<Json<UserResponse>, (StatusCode, String)> {
 //     let db = db.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e)))?;
-    
+
 //     let user = db.get_user_by_email("test@example.com")
 //         .await
 //         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Query failed: {}", e)))?;

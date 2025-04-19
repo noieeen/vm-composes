@@ -9,7 +9,7 @@ use axum::{
 };
 use db::Db;
 use dotenvy::dotenv;
-use services::auth::{ login, register};
+use services::auth::{get_users, login, register};
 use std::env;
 // use std::net::SocketAddr;
 
@@ -36,6 +36,7 @@ async fn main() {
         .route("/", get(|| async { "Hello, World!" }))
         .route("/login", post(login))
         .route("/register", post(register))
+        .route("/users", get(get_users))
         // .route("/user", get(get_user_handler))
         // .route("/signup", post(signup_handler)) // To implement similarly
         .with_state(db.clone());
