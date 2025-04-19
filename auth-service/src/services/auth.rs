@@ -4,6 +4,22 @@ use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 use std::env;
 
+// #[derive(Error, Debug)]
+// pub enum AuthError {
+//     #[error("Database error: {0}")]
+//     DatabaseError(#[from] Error),
+//     #[error("Invalid credentials")]
+//     InvalidCredentials,
+//     #[error("Email already exists")]
+//     EmailExists,
+//     #[error("Username already exists")]
+//     UsernameExists,
+//     #[error("JWT error: {0}")]
+//     JwtError(#[from] jsonwebtoken::errors::Error),
+//     #[error("Password hashing error")]
+//     HashingError,
+// }
+
 #[derive(Deserialize)]
 pub struct LoginPayload {
     pub email: String,
@@ -24,6 +40,11 @@ pub struct AuthResponse {
 #[derive(Serialize)]
 pub struct RegisterResponse {
     pub message: String,
+    pub email: String
+}
+
+#[derive(Serialize)]
+pub struct UserResponse {
     pub email: String
 }
 
@@ -72,3 +93,13 @@ pub async fn register(
         email: user.email,
     }))
 }
+
+// pub async fn get_user_handler(db: Result<Db, sqlx::Error>) -> Result<Json<UserResponse>, (StatusCode, String)> {
+//     let db = db.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("DB error: {}", e)))?;
+    
+//     let user = db.get_user_by_email("test@example.com")
+//         .await
+//         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Query failed: {}", e)))?;
+
+//     Ok(Json(UserResponse { email: user.email }));
+// }

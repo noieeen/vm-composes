@@ -1,19 +1,22 @@
-FROM rustlang/rust:nightly as builder
+FROM rust:1.86 as builder
 
-WORKDIR /app
-COPY . /app
+WORKDIR /usr/src/auth-service
+COPY . .
 
-RUN apt-get update && apt-get install -y libpq-dev pkg-config
+ENV SQLX_OFFLINE=true
 RUN cargo build --release
+# RUN cargo install --path .
+
+# RUN apt-get update && apt-get install -y libpq-dev pkg-config
 
 FROM debian:bullseye-slim
 
-RUN apt-get update && apt-get install -y ca-certificates libpq-dev && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-COPY --from=builder /app/target/release/auth-service .
+COPY --from=builder /usr/src/auth-service/target/release/auth-service /usr/local/bin/auth-service
 
-ENV RUST_LOG=info
-EXPOSE 3000
+# ENV RUST_LOG=info
+# EXPOSE 3000
 
-CMD ["./auth-service"]
+CMD ["auth-service"]

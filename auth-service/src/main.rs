@@ -9,7 +9,7 @@ use axum::{
 };
 use db::Db;
 use dotenvy::dotenv;
-use services::auth::{login, register};
+use services::auth::{ login, register};
 use std::env;
 // use std::net::SocketAddr;
 
@@ -17,7 +17,14 @@ use std::env;
 async fn main() {
     dotenv().ok();
     env_logger::init();
-    let db = Db::new().await;
+    // let db = Db::new().await;
+    let db = match Db::new().await {
+        Ok(db) => db,
+        Err(e) => {
+            eprintln!("Database initialization failed: {}", e);
+            std::process::exit(1); // Optional: exit app if DB is critical
+        }
+    };
 
     let port = env::var("PORT")
         .unwrap_or_else(|_| "3000".to_string())
@@ -29,6 +36,7 @@ async fn main() {
         .route("/", get(|| async { "Hello, World!" }))
         .route("/login", post(login))
         .route("/register", post(register))
+        // .route("/user", get(get_user_handler))
         // .route("/signup", post(signup_handler)) // To implement similarly
         .with_state(db.clone());
 
