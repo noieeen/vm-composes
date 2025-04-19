@@ -6,6 +6,7 @@ use axum::{Json, extract::State, http::StatusCode};
 use jsonwebtoken::{EncodingKey, Header, encode};
 use serde::{Deserialize, Serialize};
 use std::env;
+use tracing::warn;
 
 // #[derive(Error, Debug)]
 // pub enum AuthError {
@@ -67,6 +68,8 @@ pub async fn login(
         .map_err(|_| StatusCode::UNAUTHORIZED)?;
 
     if !verify_password(&payload.password, &user.password).map_err(|_| StatusCode::UNAUTHORIZED)? {
+        warn!("Unauthorized login attempt for user: {}", &payload.email);
+
         return Err(StatusCode::UNAUTHORIZED);
     }
 

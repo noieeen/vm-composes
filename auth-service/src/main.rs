@@ -10,6 +10,7 @@ use axum::{
 use db::Db;
 use dotenvy::dotenv;
 use monitoring::metrics::{metrics_handler, setup_metrics};
+use monitoring::tracing::tracing_start;
 use services::auth::{get_users, login, register};
 use std::env;
 use tower_http::trace::TraceLayer;
@@ -22,11 +23,14 @@ use std::sync::OnceLock; // Added import for OnceLock
 async fn main() {
     // 1. Initialize Prometheus metrics exporter
     setup_metrics();
+    tracing_start();
 
     dotenv().ok();
-    tracing_subscriber::registry()
-        .with(tracing_subscriber::fmt::layer())
-        .init();
+
+    // tracing_subscriber::registry()
+    //     .with(tracing_subscriber::fmt::layer())
+    //     .init();
+
     let db = match Db::new().await {
         Ok(db) => db,
         Err(e) => {
