@@ -29,7 +29,7 @@ services:
       DATABASE_URL: postgres://admin:postgres@postgres_db:5432/auth_db
       JWT_SECRET: your_jwt_secret
     ports:
-      - "3000:3000"
+      - "80:3000"
     depends_on:
       postgres:
         condition: service_healthy
