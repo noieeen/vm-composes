@@ -1,0 +1,36 @@
+version: '3.9'
+
+services:
+  postgres:
+    image: postgres:15
+    platform: linux/amd64
+    restart: unless-stopped
+    container_name: postgres_db
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "admin", "-d", "auth_db"]   
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: auth_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-db-data:/var/lib/postgresql/data
+
+  auth-service:
+    build:
+      context: ./auth-service
+      dockerfile: Dockerfile
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://admin:postgres@postgres_db:5432/auth_db
+      JWT_SECRET: your_jwt_secret
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres-db-data:
