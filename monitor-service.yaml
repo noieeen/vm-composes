@@ -4,14 +4,16 @@ services:
 
   # ClickHouse for log storage
   clickhouse:
+    container_name: clickhouse
     image: clickhouse/clickhouse-server:latest
+    restart: unless-stopped
     healthcheck:
       test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping" ]
       interval: 10s
       timeout: 5s
       retries: 3
     volumes:
-      - ./data/clickhouse-data:/var/lib/clickhouse
+      - clickhouse-data:/var/lib/clickhouse
       - ./configs/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/logging.xml
       - ./configs/clickhouse-users.xml:/etc/clickhouse-server/users.d/logging.xml
@@ -28,9 +30,11 @@ services:
 
   # Grafana for visualization
   grafana:
+    container_name: grafana
     image: grafana/grafana:latest
+    restart: unless-stopped
     volumes:
-      - ./data/grafana-data:/var/lib/grafana
+      - grafana-data:/var/lib/grafana
       - ./configs/grafana/provisioning:/etc/grafana/provisioning
       - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
     environment:
@@ -49,7 +53,9 @@ services:
 
 # OpenTelemetry Collector for monitoring
   otel-collector:
+    container_name: otel-collector
     image: otel/opentelemetry-collector-contrib:latest
+    restart: unless-stopped
     command: [ "--config=/etc/otelcol-contrib/config.yaml" ]
     volumes:
       - ./configs/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
@@ -66,10 +72,12 @@ services:
 
   # Prometheus for metrics storage
   prometheus:
+    container_name: prometheus
     image: prom/prometheus:latest
+    restart: unless-stopped
     volumes:
       - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
-      - ./data/prometheus-data:/prometheus
+      - prometheus-data:/prometheus
     ports:
       - "9090:9090"
     networks:
