@@ -1,0 +1,198 @@
+# Data sources
+[sources.internal_metrics]
+type = "internal_metrics"
+
+# Vector's API server
+[api]
+enabled = true
+address = "0.0.0.0:8383"
+
+# Prometheus metrics exporter
+[sinks.prometheus]
+type = "prometheus_exporter"
+inputs = ["internal_metrics"]
+address = "0.0.0.0:9598"
+
+# OpenTelemetry source
+[sources.otel]
+type = "opentelemetry"
+
+[sources.otel.grpc]
+address = "0.0.0.0:4317"
+#encoding = "protobuf"
+
+# OpenTelemetry HTTP source
+[sources.otel.http]
+address = "0.0.0.0:4318"
+headers = []
+#A value of 0.1 means that the actual duration will be between 90% and 110% of the specified maximum duration.
+[sources.otel.http.keepalive]
+max_connection_age_jitter_factor = 0.1
+max_connection_age_secs = 300
+
+## Add a transform to process logs
+#[transforms.otel_logs]
+#type = "remap"
+#inputs = ["otel.logs"]
+#source = '''
+## Extract relevant fields
+#. = parse_json!(string!(.message))
+#'''
+
+# Optional: Transformation to add labels or filter logs
+[transforms.otel_logs]
+type = "remap"
+inputs = ["otel.logs"]
+source = '''
+    parsed_timestamp, err = parse_timestamp(.observed_timestamp, format: "%Y-%m-%dT%H:%M:%S.%fZ")
+    
+    # Check if the conversion was successful. Note here that all errors must be handled, more on that later.
+    if err == null {
+       # Note that the `to_unix_timestamp` expects a `timestamp` argument.
+       # The following will compile because `parse_timestamp` returns a `timestamp`.
+      .timestamp = to_unix_timestamp(parsed_timestamp)
+    } else {
+      # Conversion failed, in this case use the current time.
+      .timestamp = to_unix_timestamp(now())
+    }
+    
+    # Convert back to timestamp for this tutorial.
+    .timestamp_str = from_unix_timestamp!(.timestamp)
+
+    event_data = .
+
+   . = {
+    "ObservedTimestamp" : format_timestamp!(.timestamp_str, format: "%Y-%m-%d %H:%M:%S"),
+    "SeverityNumber" :to_int!(.severity_number),
+    "SeverityText" : .severity_text,
+    "Body" : encode_json(.message),
+    "ScopeName" : .scope.name,
+    "ServiceName" : .resources.service.name,
+    "SpanId" : .span_id,
+    "TraceId" : .trace_id,
+    "SourceType" : .source_type,
+    "LogResources" : .resources,
+    "LogAttributes" : .attributes,
+    "Log" : encode_json(event_data)
+   }
+'''
+#source = """
+## Parse the JSON message
+#event = .
+#
+## Map nested 'attributes' fields
+#attributes = []
+#for_each(object!(event.attributes)) ->  |key, value| {
+#attributes = push(attributes, {"key" : key, "value" : value})
+#}
+##for_each(array!(.attributes)) -> |_index, value| {
+#
+##}
+##for_each(key, value in .attributes) {
+##  .attributes = .attributes + {"key": key, "value": value}
+##}
+#
+## Map nested 'resources' fields
+#resources = []
+#for_each(object!(event.resources)) ->  |key, value| {
+#resources = push(resources, {"key" : key, "value" : value})
+#}
+#
+## Map top-level fields
+#    . = {
+#    #.timestamp : parse_timestamp!(.timestamp, "%Y-%m-%dT%H:%M:%S.%fZ"),
+#    #.observed_timestamp : parse_timestamp!(.observed_timestamp, "%Y-%m-%dT%H:%M:%S.%fZ"),
+#    "severity_number" :to_int!(.severity_number),
+#    "severity_text" : .severity_text,
+#    "message" : .message,
+#    "dropped_attributes_count" : to_int!(.dropped_attributes_count),
+#    "flags" : to_int!(.flags),
+#    "scope_name" : .scope.name,
+#    "span_id" : .span_id,
+#    "trace_id" : .trace_id,
+#    "source_type" : .source_type,
+##    "resources" : encode_json(resources),
+##    "attributes" : encode_json(attributes),
+#    }
+#
+#"""
+
+#source = """
+#    . = {
+#      "dropped_attributes_count": .dropped_attributes_count,
+#      "flags": .flags,
+#      "message": encode_json(.message),
+##      "observed_timestamp": .observed_timestamp,
+#      "severity_number": .severity_number,
+#      "severity_text": .severity_text,
+#      "source_type": .source_type,
+#      "span_id": .span_id,
+#      "timestamp": to_datetime(.timestamp),
+#      "trace_id": .trace_id
+#    }
+#"""
+
+
+
+## Work
+#source = """
+#    . = {
+#    "message": encode_json(.message),
+#    "severity_number": .severity_number,
+##    "observed_timestamp": parse_timestamp(.observed_timestamp, "%Y/%m/%d %H:%M:%S %z") ?? now()
+#    }
+#"""
+#source = '''
+##  .timestamp = parse_date!(.attributes.Time, "%m/%d/%Y %H:%M:%S")
+##  .observed_timestamp = parse_date!(.observed_timestamp, "%Y-%m-%dT%H:%M:%S.%fZ")
+#  .trace_id = .trace_id
+#  .span_id = .span_id
+#  .severity_text = .severity_text
+#  .severity_number = .severity_number
+#  .service_name = .resources.service.name
+#  .service_version = .resources.service.version
+#  .body = .message
+#  .source_type = .source_type
+#  .flags = .flags
+#  .resource_attributes = encode_json(.resources)
+#  .attributes = encode_json(.attributes)
+#'''
+#source = '''
+#. = parse_json!(.message)
+#.observed_timestamp = now()
+#source_type = "opentelemetry"
+#resource_attributes = encode_json(.resource_attributes)  # Convert to string
+#attributes = encode_json(.attributes)  # Convert to string
+#'''
+
+## For JSON clickhouse enabled
+#source = '''
+#. = parse_json!(.message)  # Ensure log message is parsed as JSON
+#.observed_timestamp = now()  # Add observed timestamp if missing
+#source_type = "opentelemetry"  # Tag source type
+#resource_attributes = encode_json(.resource_attributes)  # Convert to JSON
+#attributes = encode_json(.attributes)  # Convert to JSON
+#'''
+
+## Expose to console
+#[sinks.console]
+#type = "console"
+#inputs = ["otel_logs"]
+#encoding.codec = "json"
+#target = "stdout" #[stderr, stdout]
+
+
+# Data sinks
+[sinks.clickhouse_logs]
+type = "clickhouse"
+inputs = ["otel_logs"]
+database = "default"
+table = "otel_logs"
+endpoint = "http://clickhouse:8123"
+compression = "gzip"
+#encoding.codec = "json"  # Use JSON format for structured logs
+skip_unknown_fields = true
+
+# Health checks
+[sinks.clickhouse_logs.healthcheck]
+enabled = true

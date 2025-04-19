@@ -1,0 +1,52 @@
+# Data sources
+[sources.internal_metrics]
+type = "internal_metrics"
+
+# Vector's API server
+[api]
+enabled = true
+address = "0.0.0.0:8383"
+
+
+
+# Metrics configuration [Vector]
+[sinks.prometheus]
+#Adds a proper internal_metrics source to collect Vector's internal metrics
+#Uses the internal_metrics source as input for the Prometheus exporter
+type = "prometheus_exporter"
+inputs = ["internal_metrics"]
+address = "0.0.0.0:9598"
+#flush_period_secs = 60
+
+# Data sources
+[sources.otel_grpc]
+type = "opentelemetry"
+address = "0.0.0.0:4317"
+
+# Data sources
+[sources.otel_http]
+type = "opentelemetry"
+address = "0.0.0.0:4318"
+
+# Transformations
+[transforms.parse_logs]
+type = "remap"
+inputs = ["otel_grpc"]
+source = '''
+# Extract relevant fields
+. = parse_json!(string!(.message))
+'''
+
+# Data sinks
+[sinks.clickhouse_logs]
+type = "clickhouse"
+inputs = ["parse_logs"]
+database = "logs"
+endpoint = "http://clickhouse:8123"
+table = "logs"
+skip_unknown_fields = true
+compression = "gzip"
+
+# Health checks
+[sinks.clickhouse_logs.healthcheck]
+enabled = true

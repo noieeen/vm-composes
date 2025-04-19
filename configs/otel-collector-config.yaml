@@ -1,0 +1,130 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: "0.0.0.0:4317"
+      http:
+        endpoint: "0.0.0.0:4318"
+        cors:
+          allowed_origins:
+            - "http://*"
+            - "https://*"
+
+processors:
+  batch:
+    timeout: 1s
+    send_batch_size: 102400
+  
+  batch/clickhouse:
+    timeout: 5s
+    send_batch_size: 100000
+  
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 100000
+  
+  memory_limiter/clickhouse:
+    check_interval: 2s
+    limit_mib: 1800
+    spike_limit_mib: 500
+  
+  resourcedetection/system:
+    detectors: [ "system" ]
+    system:
+      hostname_sources: [ "os" ]
+
+#  resource:
+#    attributes:
+#      - key: service.name
+#        value: "OTEL Service"
+#        action: upsert
+
+### EXPORTER
+exporters:
+  prometheus:
+    endpoint: "0.0.0.0:8889"
+    namespace: "dotnet_monitoring"
+
+  otlp/jaeger:
+    endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+  
+  #  jaeger_storage_exporter:
+  #    trace_storage: some_storage
+
+  otlp/vector:
+    endpoint: "vector:4317"
+    tls:
+      insecure: true
+  
+  
+  clickhouse:
+    endpoint: tcp://clickhouse:9000
+    database: otel
+    logs_table_name: otel_logs
+    traces_table_name: otel_traces
+    metrics_table_name: otel_metrics
+    ttl: 12h
+    timeout: 10s
+    sending_queue:
+      queue_size: 100
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s
+
+
+connectors:
+  spanmetrics:
+    namespace: span.metrics
+
+service:
+  pipelines:
+    metrics:
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ prometheus ]
+    
+    metrics/spanmetrics:
+      receivers: [ spanmetrics ]
+      exporters: [ prometheus ]
+    
+    metrics/clickhouse:
+      receivers: [ otlp ]
+      processors: [ memory_limiter/clickhouse, resourcedetection/system,  batch ]
+      exporters: [ clickhouse ]
+    
+    traces/jaeger:
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlp/jaeger, spanmetrics ]
+    
+    traces/clickhouse:
+      receivers: [ otlp ]
+      processors: [ memory_limiter/clickhouse, resourcedetection/system,  batch ]
+      exporters: [ clickhouse ]
+    
+    logs/clickhouse:
+      receivers: [ otlp ]
+      processors: [ memory_limiter/clickhouse, resourcedetection/system,  batch ]
+      exporters: [ clickhouse ]
+      
+      #    traces:
+      #      receivers: [ otlp ]
+      #      #      processors: [ memory_limiter, batch ]
+      #      processors: [ memory_limiter/clickhouse, batch/clickhouse ]
+      #      exporters: [ clickhouse ]
+      
+      #    logs/clickhouse:
+      #      receivers: [ otlp ]
+      #      processors: [ memory_limiter/clickhouse, batch/clickhouse ]
+      #      exporters: [ clickhouse ]
+    
+    
+    logs/vector:
+      receivers: [ otlp ]
+      processors: [ memory_limiter, batch ]
+      exporters: [ otlp/vector ]
+      

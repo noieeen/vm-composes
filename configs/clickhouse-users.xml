@@ -1,0 +1,55 @@
+<!-- clickhouse-users.xml -->
+<clickhouse>
+    <profiles>
+        <!-- Default settings for all users -->
+        <default>
+            <max_memory_usage>10000000000</max_memory_usage>
+            <max_memory_usage_for_user>0</max_memory_usage_for_user>
+            <use_uncompressed_cache>1</use_uncompressed_cache>
+            <load_balancing>random</load_balancing>
+            <max_partitions_per_insert_block>100</max_partitions_per_insert_block>
+        </default>
+
+        <!-- Settings for readonly users -->
+        <readonly>
+            <readonly>1</readonly>
+        </readonly>
+    </profiles>
+
+    <quotas>
+        <!-- Default quotas for all users -->
+        <default>
+            <interval>
+                <duration>3600</duration>
+                <queries>0</queries>
+                <errors>0</errors>
+                <result_rows>0</result_rows>
+                <read_rows>0</read_rows>
+                <execution_time>0</execution_time>
+            </interval>
+        </default>
+    </quotas>
+
+    <users>
+        <!-- Default user for connecting to ClickHouse -->
+        <default>
+            <password></password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>default</profile>
+            <quota>default</quota>
+            <access_management>1</access_management>
+        </default>
+
+        <!-- Read-only user for metrics and monitoring -->
+        <grafana>
+            <password>grafana_password</password>
+            <networks>
+                <ip>::/0</ip>
+            </networks>
+            <profile>readonly</profile>
+            <quota>default</quota>
+        </grafana>
+    </users>
+</clickhouse>

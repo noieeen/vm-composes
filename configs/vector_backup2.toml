@@ -1,0 +1,71 @@
+# Data sources
+[sources.internal_metrics]
+type = "internal_metrics"
+
+# Vector's API server
+[api]
+enabled = true
+address = "0.0.0.0:8383"
+
+# Prometheus metrics exporter
+[sinks.prometheus]
+type = "prometheus_exporter"
+inputs = ["internal_metrics"]
+address = "0.0.0.0:9598"
+
+# OpenTelemetry source
+[sources.otel]
+type = "opentelemetry"
+
+[sources.otel.grpc]
+address = "0.0.0.0:4317"
+
+# OpenTelemetry HTTP source
+[sources.otel.http]
+address = "0.0.0.0:4318"
+headers = []
+
+## Add a transform to process logs
+#[transforms.otel_logs]
+#type = "remap"
+#inputs = ["otel.logs"]
+#source = '''
+## Extract relevant fields
+#. = parse_json!(string!(.message))
+#'''
+
+# Optional: Transformation to add labels or filter logs
+[transforms.otel_logs]
+type = "remap"
+inputs = ["otel.logs"]
+source = '''
+  # Remap attributes to structured labels
+  . = merge(., {
+    "trace_id": .TraceId,
+    "span_id": .SpanId,
+    "severity": .SeverityText,
+    "message": .Body,
+    "service_name": .service.name,
+    "service_version": .service.version
+  })
+'''
+
+[sinks.console]
+type = "console"
+inputs = ["otel_logs"]
+encoding.codec = "json"
+target = "stdout" #[stderr, stdout]
+
+# Data sinks
+[sinks.clickhouse_logs]
+type = "clickhouse"
+inputs = ["otel_logs"]
+database = "logs"
+endpoint = "http://clickhouse:8123"
+table = "logs"
+skip_unknown_fields = true
+compression = "gzip"
+
+# Health checks
+[sinks.clickhouse_logs.healthcheck]
+enabled = true

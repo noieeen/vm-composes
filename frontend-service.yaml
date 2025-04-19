@@ -1,0 +1,53 @@
+version: '3.8'
+
+services:
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    platform: linux/amd64
+    environment:
+      - TZ=Asia/Bangkok # Change this to your timezone
+      - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+    restart: unless-stopped
+    command: tunnel --no-autoupdate run
+    networks:
+      - cftunnel-transport
+
+  traefik:
+    image: traefik:v3.3
+    platform: linux/amd64
+    container_name: traefik
+    restart: always
+    command:
+      #- "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entryPoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - cftunnel-transport
+      - cloudflaretunnel
+
+  whoami:
+    image: traefik/whoami
+    container_name: simple-service
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.whoami.rule=Host(`whoami.localhost`)"
+      - "traefik.http.routers.whoami.entrypoints=web"
+    networks:
+      - backend
+
+networks:
+  backend:
+    driver: bridge
+  cftunnel-transport:
+    external: true
+  cloudflaretunnel:
+    external: true

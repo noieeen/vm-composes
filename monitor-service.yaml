@@ -1,0 +1,86 @@
+version: '3.8'
+
+services:
+
+  # ClickHouse for log storage
+  clickhouse:
+    image: clickhouse/clickhouse-server:latest
+    healthcheck:
+      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:8123/ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    volumes:
+      - ../data/clickhouse-data:/var/lib/clickhouse
+      - ./configs/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/logging.xml
+      - ./configs/clickhouse-users.xml:/etc/clickhouse-server/users.d/logging.xml
+    ports:
+      - "8123:8123"  # HTTP interface
+      - "9000:9000"  # Native interface
+    environment:
+      - CLICKHOUSE_DB=logs
+      - CLICKHOUSE_USER=default
+      - CLICKHOUSE_PASSWORD=
+      - CLICKHOUSE_ALWAYS_RUN_INITDB_SCRIPTS=1
+    networks:
+      - monitoring-network
+
+  # Grafana for visualization
+  grafana:
+    image: grafana/grafana:latest
+    volumes:
+      - ./data/grafana-data:/var/lib/grafana
+      - ./configs/grafana/provisioning:/etc/grafana/provisioning
+      - ./configs/grafana/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-clickhouse-datasource
+      - GF_INSTALL_PLUGINS=maormil-rabbitmq-datasource
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
+      - jaeger
+      - clickhouse
+    networks:
+      - monitoring-network
+
+# OpenTelemetry Collector for monitoring
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:latest
+    command: [ "--config=/etc/otelcol-contrib/config.yaml" ]
+    volumes:
+      - ./configs/otel-collector-config.yaml:/etc/otelcol-contrib/config.yaml
+    ports:
+      - "4317:4317"   # OTLP gRPC
+      - "4318:4318"   # OTLP HTTP
+      - "8888:8888"   # Metrics extension
+      - "13133:13133" # Health check
+    networks:
+      - monitoring-network
+    depends_on:
+      clickhouse:
+        condition: service_healthy
+
+  # Prometheus for metrics storage
+  prometheus:
+    image: prom/prometheus:latest
+    volumes:
+      - ./configs/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./data/prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - monitoring-network
+
+networks:
+  monitoring-network:
+    driver: bridge
+
+volumes:
+  prometheus-data:
+  clickhouse-data:
+  grafana-data:

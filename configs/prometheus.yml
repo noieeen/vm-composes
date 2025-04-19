@@ -1,0 +1,94 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  ### >OPENTELEMETRY
+  - job_name: 'Opentelemetry-collector'
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'otel-collector:8889' ]
+        labels:
+          group: 'monitoring'
+  
+  ### >PROMETHEUS
+  - job_name: 'Prometheus'
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'localhost:9090' ]
+        labels:
+          group: 'monitoring'
+  
+  ### >CLICKHOUSE
+  - job_name: 'Clickhouse'
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'clickhouse:9363' ]
+        labels:
+          group: 'monitoring'
+  
+  ### >VECTOR
+  - job_name: 'Vector'
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'vector:9598' ]
+        labels:
+          group: 'monitoring'
+  
+  ### >NET SERVICES
+  - job_name: 'Services'
+    scrape_interval: 5s
+    static_configs:
+      - targets: [ 'service_a:8080',
+                   'service_b:8080',
+                   'service_auth:8080',
+                   'api_auth:8080',
+                   'api_store:8080' ]
+        labels:
+          group: 'services'
+  
+  
+  ### >MSSQL
+  #  - job_name: 'mssql-exporter'
+  #    scrape_interval: 5s
+  #    static_configs:
+  #      - targets: [ 'mssql-exporter:4000' ]
+  #        labels:
+  #          group: 'infra'
+  
+  ### >REDIS
+  - job_name: 'redis-exporter'
+    scrape_interval: 15s
+    static_configs:
+      - targets: [ 'redis-exporter:9121' ]
+        labels:
+          group: 'infra'
+          #  - job_name: 'redis_exporter'
+          #    scrape_interval: 30s
+          #    scrape_timeout: 30s
+          #    metrics_path: /  # For v2, use /v2
+          ##    scheme: https
+          #    tls_config:
+          #      insecure_skip_verify: true
+          #    static_configs:
+          #      - targets: [ 'redis-service:8070' ]
+          #        labels:
+          #          group: 'infra'
+
+  - job_name: 'RabbitMQ'
+    static_configs:
+      - targets: [ 'rabbitmq:15692' ]
+        labels:
+          group: 'infra'
+
+  - job_name: "zookeeper-server"
+    static_configs:
+      - targets: [ "zookeeper:7072" ]
+        labels:
+          group: "kafka"
+
+  - job_name: 'kafka'
+    static_configs:
+      - targets: [ 'kafka:9101' ]
+        labels:
+          group: "kafka"

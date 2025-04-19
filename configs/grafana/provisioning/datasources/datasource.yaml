@@ -1,0 +1,73 @@
+# config file version
+apiVersion: 1
+
+# list of datasources to insert/update
+datasources:
+  # Prometheus datasource
+  - name: Prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+    editable: true
+
+  # Jaeger datasource
+  - name: Jaeger
+    type: jaeger
+    access: proxy
+    url: http://jaeger:16686
+    editable: true
+
+  # ClickHouse datasource
+  - name: ClickHouse
+    type: grafana-clickhouse-datasource
+    jsonData:
+      host: clickhouse
+      port: 9000
+      protocol: native
+      secure: false
+      username: default
+#      tlsSkipVerify: <boolean>
+#      tlsAuth: <boolean>
+#      tlsAuthWithCACert: <boolean>
+      defaultDatabase: otel
+      defaultTable: otel_logs
+#      dialTimeout: 10
+#      queryTimeout: 60
+#      validateSql: false
+#      httpHeaders:
+#        - name: X-Example-Plain-Header
+#          value: plain text value
+#          secure: false
+#        - name: X-Example-Secure-Header
+#          secure: true
+      logs:
+        defaultDatabase: otel
+        defaultTable: otel_logs
+        otelEnabled: true
+#        otelVersion: latest
+#        timeColumn: <string>
+#        levelColumn: <string>
+#        messageColumn: <string>
+      traces:
+        defaultDatabase: otel
+        defaultTable: otel_traces
+        otelEnabled: true
+#        otelVersion: latest
+#        traceIdColumn: <string>
+#        spanIdColumn: <string>
+#        operationNameColumn: <string>
+#        parentSpanIdColumn: <string>
+#        serviceNameColumn: <string>
+#        durationTimeColumn: <string>
+#        durationUnitColumn: <time unit>
+#        startTimeColumn: <string>
+#        tagsColumn: <string>
+#        serviceTagsColumn: <string>
+#    secureJsonData:
+#      tlsCACert: <string>
+#      tlsClientCert: <string>
+#      tlsClientKey: <string>
+#      secureHttpHeaders.X-Example-Secure-Header: secure header value
+    editable: true
+    

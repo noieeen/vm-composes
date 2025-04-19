@@ -1,0 +1,139 @@
+# Data sources
+[sources.internal_metrics]
+type = "internal_metrics"
+
+# Vector's API server
+[api]
+enabled = true
+address = "0.0.0.0:8383"
+
+# Prometheus metrics exporter
+[sinks.prometheus]
+type = "prometheus_exporter"
+inputs = ["internal_metrics"]
+address = "0.0.0.0:9598"
+
+# OpenTelemetry source
+[sources.otel]
+type = "opentelemetry"
+log_namespace = true
+#ignore_older_secs = 8400 # 1day
+#encoding = "protobuf"
+
+[sources.otel.grpc]
+address = "0.0.0.0:4317"
+
+
+# OpenTelemetry HTTP source
+[sources.otel.http]
+address = "0.0.0.0:4318"
+headers = []
+#A value of 0.1 means that the actual duration will be between 90% and 110% of the specified maximum duration.
+[sources.otel.http.keepalive]
+max_connection_age_jitter_factor = 0.1
+max_connection_age_secs = 300
+
+
+# Add a transform to process logs
+##### VECTOR CAN NOT FORWERD TRACES ####
+#[transforms.otel_traces]
+#type = "remap"
+#inputs = ["otel.traces"]
+#source = '''
+#trace_data = .
+##. = {
+##    "Body" : encode_json(trace_data),
+##    "LogAttributes" : .attributes,
+##    "LogResources" : .resources
+##}
+#  .  = {"message": encode_json(trace_data)}
+#'''
+
+# Optional: Transformation to add labels or filter logs
+#[transforms.otel_logs]
+#type = "remap"
+#inputs = ["otel.logs"]
+#source = '''
+#    parsed_timestamp, err = parse_timestamp(.observed_timestamp, format: "%Y-%m-%dT%H:%M:%S.%fZ")
+#
+#    # Check if the conversion was successful. Note here that all errors must be handled, more on that later.
+#    if err == null {
+#       # Note that the `to_unix_timestamp` expects a `timestamp` argument.
+#       # The following will compile because `parse_timestamp` returns a `timestamp`.
+#      .timestamp = to_unix_timestamp(parsed_timestamp)
+#    } else {
+#      # Conversion failed, in this case use the current time.
+#      .timestamp = to_unix_timestamp(now())
+#    }
+#
+#    # Convert back to timestamp for this tutorial.
+#    .timestamp_str = from_unix_timestamp!(.timestamp)
+#
+#    event_data = .
+#
+#   . = {
+#    "ObservedTimestamp" : format_timestamp!(.timestamp_str, format: "%Y-%m-%d %H:%M:%S"),
+#    "SeverityNumber" :to_int!(.severity_number),
+#    "SeverityText" : .severity_text,
+#    "Body" : encode_json(.message),
+#    "ScopeName" : .scope.name,
+#    "ServiceName" : .resources.service.name,
+#    "SpanId" : .span_id,
+#    "TraceId" : .trace_id,
+#    "SourceType" : .source_type,
+#    "LogResources" : .resources,
+#    "LogAttributes" : .attributes,
+#    "Log" : encode_json(event_data)
+#   }
+#'''
+
+
+[transforms.otel_logs]
+type = "remap"
+inputs = ["otel.logs"]
+source = '''
+    .
+'''
+
+[sinks.console_logs]
+type = "console"
+inputs = ["otel_logs"]
+#inputs = ["otel_logs", "otel_traces"]
+encoding.codec = "json"
+target = "stdout" #[stderr, stdout]
+
+## Data sinks
+#[sinks.clickhouse_otel_traces]
+#type = "clickhouse"
+#inputs = ["otel_traces"]
+#database = "logs"
+#table = "dummy"
+#endpoint = "http://clickhouse:8123"
+#compression = "gzip"
+##encoding  = "json"
+#skip_unknown_fields = true
+
+#[sinks.clickhouse_otel_traces.request]
+#rate_limit_duration_secs = 1
+#rate_limit_num = 100
+
+
+# Data sinks
+#[sinks.clickhouse_otel_logs]
+#type = "clickhouse"
+#inputs = ["otel_logs"]
+#database = "otel"
+#table = "otel_logs"
+#endpoint = "http://clickhouse:8123"
+#compression = "gzip"
+##encoding.codec = "json"  # Use JSON format for structured logs
+#skip_unknown_fields = true
+
+# Health checks
+#[sinks.clickhouse_otel_logs.healthcheck]
+#enabled = true
+
+## Health checks
+#[sinks.clickhouse_otel_traces.healthcheck]
+#enabled = true
+

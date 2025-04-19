@@ -1,0 +1,89 @@
+version: "3.8"
+services:
+  # Service A: Main application
+  service_a:
+    image: noieeen/servicea
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ../ServiceA/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    ports:
+      - "8081:8080"
+    depends_on:
+      - otel-collector
+    networks:
+      - monitoring-network
+
+  # Service B: 2nd application
+  service_b:
+    image: noieeen/serviceb
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ../ServiceB/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    ports:
+      - "8082:8080"
+    depends_on:
+      - otel-collector
+    networks:
+      - monitoring-network
+
+  # Service Auth
+  service_auth: # connect mssql
+    image: noieeen/serviceauth
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ../AuthService/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    ports:
+      - "8083:8080"
+    depends_on:
+      otel-collector:
+        condition: service_started
+      database-server:
+        condition: service_healthy
+    networks:
+      - monitoring-network
+
+    # API
+  api_auth:
+    image: noieeen/auth.api
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ../Auth.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    ports:
+      - "9001:8080"
+    depends_on:
+      otel-collector:
+        condition: service_started
+      database-server:
+        condition: service_healthy
+    networks:
+      - monitoring-network
+
+  api_store:
+    image: noieeen/store.api
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: ../Store.Api/Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+    ports:
+      - "9002:8080"
+    depends_on:
+      otel-collector:
+        condition: service_started
+      database-server:
+        condition: service_healthy
+    networks:
+      - monitoring-network
