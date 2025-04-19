@@ -11,7 +11,7 @@ services:
       timeout: 5s
       retries: 3
     volumes:
-      - ../data/clickhouse-data:/var/lib/clickhouse
+      - ./data/clickhouse-data:/var/lib/clickhouse
       - ./configs/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./configs/clickhouse-config.xml:/etc/clickhouse-server/config.d/logging.xml
       - ./configs/clickhouse-users.xml:/etc/clickhouse-server/users.d/logging.xml
