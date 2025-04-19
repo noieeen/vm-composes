@@ -21,6 +21,7 @@ services:
       - postgres-db-data:/var/lib/postgresql/data
 
   auth-service:
+    container_name: auth_service
     build:
       context: ./auth-service
       dockerfile: Dockerfile
@@ -29,7 +30,7 @@ services:
       DATABASE_URL: postgres://admin:postgres@postgres_db:5432/auth_db
       JWT_SECRET: your_jwt_secret
     ports:
-      - "80:3000"
+      - "3000:3000"
     depends_on:
       postgres:
         condition: service_healthy
