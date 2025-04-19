@@ -1,23 +1,32 @@
 mod db;
 mod models;
+mod monitoring;
 mod services;
 mod utils;
-// use axum::{routing::{get, post}, Router};
 use axum::{
     Router,
     routing::{get, post},
 };
 use db::Db;
 use dotenvy::dotenv;
+use monitoring::metrics::{metrics_handler, setup_metrics};
 use services::auth::{get_users, login, register};
 use std::env;
-// use std::net::SocketAddr;
+use tower_http::trace::TraceLayer;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use metrics_exporter_prometheus::PrometheusBuilder; // Added import for PrometheusBuilder
+use axum::{response::IntoResponse, response::Response}; // Added imports for response handling
+use std::sync::OnceLock; // Added import for OnceLock
 
 #[tokio::main]
 async fn main() {
+    // 1. Initialize Prometheus metrics exporter
+    setup_metrics();
+
     dotenv().ok();
-    env_logger::init();
-    // let db = Db::new().await;
+    tracing_subscriber::registry()
+        .with(tracing_subscriber::fmt::layer())
+        .init();
     let db = match Db::new().await {
         Ok(db) => db,
         Err(e) => {
@@ -32,21 +41,19 @@ async fn main() {
         .expect("PORT must be a number");
 
     let app = Router::new()
+        .layer(TraceLayer::new_for_http())
         .route("/health", post(|| async { "OK" }))
         .route("/", get(|| async { "Hello, World!" }))
+        .route("/metrics", get(metrics_handler)) // expose metrics here
         .route("/login", post(login))
         .route("/register", post(register))
         .route("/users", get(get_users))
-        // .route("/user", get(get_user_handler))
-        // .route("/signup", post(signup_handler)) // To implement similarly
         .with_state(db.clone());
 
-    // let addr = SocketAddr::from(([127, 0, 0, 1], 3000));
-    // println!("Listening on {}", addr);
-    // axum::serve::bind(&addr).serve(app.into_make_service()).await.unwrap();
-    // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind(("0.0.0.0", port))
         .await
         .unwrap();
-    axum::serve(listener, app).await.unwrap();
+    axum::serve(listener, app.into_make_service())
+        .await
+        .unwrap();
 }

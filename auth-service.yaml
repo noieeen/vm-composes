@@ -32,6 +32,7 @@ services:
       JWT_SECRET: your_jwt_secret
     ports:
       - "3000:3000"
+      - "9000:9000" // metrics
     depends_on:
       postgres:
         condition: service_healthy
