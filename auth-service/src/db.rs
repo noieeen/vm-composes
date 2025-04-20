@@ -1,5 +1,6 @@
 use crate::models::user::User;
 use sqlx::{PgPool, postgres::PgPoolOptions};
+use tracing::{info, warn};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -17,13 +18,21 @@ impl Db {
                 .connect(&database_url)
                 .await
             {
-                Ok(pool) => return Ok(Db(pool)),
+                Ok(pool) => {
+                    info!("Connected to Postgres database");
+                    return Ok(Db(pool));
+                }
                 Err(e) if retries > 0 => {
-                    eprintln!(
+                    warn!(
                         "Failed to connect to Postgres: {}. Retrying in {}s...",
                         e,
                         delay.as_secs()
                     );
+                    // eprintln!(
+                    //     "Failed to connect to Postgres: {}. Retrying in {}s...",
+                    //     e,
+                    //     delay.as_secs()
+                    // );
                     tokio::time::sleep(delay).await;
                     retries -= 1;
                     delay *= 2;
