@@ -14,10 +14,10 @@ use monitoring::tracing::tracing_start;
 use services::auth::{get_users, login, register};
 use std::env;
 use tower_http::trace::TraceLayer;
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use metrics_exporter_prometheus::PrometheusBuilder; // Added import for PrometheusBuilder
-use axum::{response::IntoResponse, response::Response}; // Added imports for response handling
-use std::sync::OnceLock; // Added import for OnceLock
+use tracing::error;
+// Added import for PrometheusBuilder
+// Added imports for response handling
+// Added import for OnceLock
 
 #[tokio::main]
 async fn main() {
@@ -34,7 +34,8 @@ async fn main() {
     let db = match Db::new().await {
         Ok(db) => db,
         Err(e) => {
-            eprintln!("Database initialization failed: {}", e);
+            error!("Database initialization failed: {}", e);
+            // eprintln!("Database initialization failed: {}", e);
             std::process::exit(1); // Optional: exit app if DB is critical
         }
     };
